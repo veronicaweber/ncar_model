@@ -1,6 +1,6 @@
 ---
 title: "ncar_model"
-author: "Jordan Faires, Michael Well, Veronica Weber"
+author: "Jordan Faires, Michael Wells, Veronica Weber"
 date: "5/9/2020"
 output: html_document
 ---
