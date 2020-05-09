@@ -1,0 +1,205 @@
+---
+title: "ncar_model"
+author: "Jordan Faires, Michael Well, Veronica Weber"
+date: "5/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(tidyverse)
+library(chron)
+library(lubridate)
+library(ncdf4)
+library(RColorBrewer)
+library(lattice)
+
+setwd("~/Desktop/ESM Homework 3/Solar Empirical Model/ncar_model/")
+```
+
+```{r }
+#------------------ NCAR CESM version r1i1p1f1 is the First Climate Model We're Going to Run ----------------------------#
+
+## Import Cloud Fragment Model ##
+
+# First set the file path  - you will probably need to adjust this for your own computer depending on how Github is storing the files
+ncpath <- "~/Desktop/ESM Homework 3/Solar Empirical Model/ncar_model/"
+
+# Historical Time Series
+# Extract each set of climate variables from the filepath - there are 2 time series here, one from 1950 - 1999 and 2000 - 2014
+ncar_clt_50_99 <- "NCAR_clt_historical_1950_1999"
+ncar_clt_50_99_x <- paste(ncpath, ncar_clt_50_99, ".nc", sep = "")
+
+ncar_clt_00_14 <- "NCAR_clt_historical_2000_2014" 
+ncar_clt_00_14_x <- paste(ncpath, ncar_clt_00_14, ".nc", sep = "")
+
+##  SSP Scenario  ##
+ncar_clt_01_64 <- "NCAR_clt_ssp370_2015_2064"
+ncar_clt_01_64_x <- paste(ncpath, ncar_clt_01_64, ".nc", sep = "")
+
+# open up the nc files so r can work with them
+ncar_clt_hist_1950_1999 <- nc_open(ncar_clt_50_99_x)
+ncar_clt_hist_2000_2014 <- nc_open(ncar_clt_00_14_x)
+ncar_clt_ssp_2015_2064 <- nc_open(ncar_clt_01_64_x)
+
+# set the name of the variable
+cloud <- "clt"  
+
+# Time coordinate for 20th century part of run from 1950 - 1999
+ncar_clt_50_99_time <- ncvar_get(ncar_clt_hist_1950_1999,"time")
+ncar_ctl_50_99_tunits <- ncatt_get(ncar_clt_hist_1950_1999,"time","units")
+origin="1/01/1950"
+enddate="12/01/1999"
+ncar_clt_time_50_99 <- seq.dates(origin, enddate, by = "months") 
+  
+# Time coordinate for early 21st century part of run from 2000 - 2014
+ncar_clt_00_14_time <- ncvar_get(ncar_clt_hist_2000_2014,"time")
+ncar_ctl_00_14_tunits <- ncatt_get(ncar_clt_hist_2000_2014,"time","units")
+origin="1/01/2000"
+enddate="12/01/2014"
+ncar_clt_time_00_14 <- seq.dates(origin, enddate, by="months")
+
+# Time coordinate for later 21st century part of run from 2015 - 2064
+ncar_clt_15_64_time <- ncvar_get(ncar_clt_ssp_2015_2064,"time")
+ncar_ctl_15_64_tunits <- ncatt_get(ncar_clt_ssp_2015_2064,"time","units")
+origin="1/01/2015"
+enddate="12/01/2064"
+ncar_clt_time_15_64 <- seq.dates(origin, enddate, by="months")
+
+# Read in the lat and lon coordinates from ONLY ONE of the data files (they're slices of output from the same climate model, and therefore use the same spatial grid). 
+lon <- ncvar_get(ncar_clt_hist_1950_1999,"lon")
+nlon <- dim(lon)
+lat <- ncvar_get(ncar_clt_hist_1950_1999,"lat")
+nlat <- dim(lat)
+
+# Set latitude and longitude - Note on coordinates: CESM uses a 0-360 degree longitude convention (or degrees E, to be specific). Ivanpah's coordinates are: 35.5568° N, 115.4705° W  - I have subtracted it from 360: 360 - 115.4705 = 244.53 
+lats = which(lat >= 35 & lat <= 36)
+lons = which(lon >= 244 & lon <= 245)
+
+```
+
+Surface Temperature ("TS") Data
+```{r loadtemp_ncdf4}
+
+###  Import Surface Temp Data ####
+## Historical ##
+ncar_ts_50_99 <- "NCAR_ts_historical_1950_1999"
+ncar_ts_hist_1950_1999_x <- paste(ncpath, ncar_ts_50_99, ".nc", sep = "")
+ncar_ts_00_14 <- "NCAR_ts_historical_2000_2014" 
+ncar_ts_hist_2000_2014_x <- paste(ncpath, ncar_ts_00_14, ".nc", sep="")
+
+## SSP Scenario ##
+ncar_ts_01_64 <- "NCAR_ts_ssp370_2015_2064"
+ncar_ts_ssp_2015_2064_x <- paste(ncpath, ncar_ts_01_64, ".nc", sep = "")
+
+# open up the nc files so r can work with them
+ncar_ts_hist_1950_1999 <- nc_open(ncar_ts_hist_1950_1999_x)
+ncar_ts_hist_2000_2014 <- nc_open(ncar_ts_hist_2000_2014_x)
+ncar_ts_ssp_2015_2064 <- nc_open(ncar_ts_ssp_2015_2064_x)
+
+# Isolate the variable we're concerned about, the surface temperature variable, "ts"
+dname <- "ts"
+
+# Time coordinate for 20th century part of run from 1950 - 1999
+ncar_ts_50_99_time <- ncvar_get(ncar_ts_hist_1950_1999,"time")
+ncar_ts_50_99_tunits <- ncatt_get(ncar_ts_hist_1950_1999,"time","units")
+origin="1/01/1950"
+enddate="12/01/1999"
+ncar_ts_time_50_99 <- seq.dates(origin, enddate, by = "months") 
+  
+# Time coordinate for early 21st century part of run from 2000 - 2014
+ncar_ts_00_14_time <- ncvar_get(ncar_ts_hist_2000_2014,"time")
+ncar_ts_00_14_tunits <- ncatt_get(ncar_ts_hist_2000_2014,"time","units")
+origin="1/01/2000"
+enddate="12/01/2014"
+ncar_ts_time_00_14 <- seq.dates(origin, enddate, by="months")
+
+# Time coordinate for later 21st century part of run from 2015 - 2064
+ncar_ts_15_64_time <- ncvar_get(ncar_ts_ssp_2015_2064,"time")
+ncar_ts_15_64_tunits <- ncatt_get(ncar_ts_ssp_2015_2064,"time","units")
+origin="1/01/2015"
+enddate="12/01/2064"
+ncar_ts_time_15_64 <- seq.dates(origin, enddate, by="months")
+
+# Read in the lat and lon coordinates from ONLY ONE of the data files (they're slices of output from the same climate model, and therefore use the same spatial grid). 
+lon <- ncvar_get(ncar_ts_hist_1950_1999,"lon")
+nlon <- dim(lon)
+lat <- ncvar_get(ncar_ts_hist_1950_1999,"lat")
+nlat <- dim(lat)
+
+# Convert TS into Celcius by subtracting 273.15 (original units are in Kelvin)
+ts_hist_50_99 <- ncvar_get(ncar_ts_hist_1950_1999, "ts")-273.15
+ts_hist_00_14 <- ncvar_get(ncar_ts_hist_2000_2014, "ts")-273.15
+ts_ssp_14_64 <- ncvar_get(ncar_ts_ssp_2015_2064, "ts")-273.15
+
+
+# Align w Ivanpah coordinates
+lats = which(lat >= 35 & lat <= 36)
+lons = which(lon >= 244 & lon <= 245)
+
+# Regional Average of surface temperatures - This is based off Sam's other example but I can't get it to work
+# tsavg_hist_50_99 <- apply(ts_hist_50_99[lons,lats,],3, mean)
+# tsavg_hist_00_14 <- apply(ts_hist_00_14[lons,lats,],3, mean)
+# tsavg_ssp_14_64 <- apply(ts_ssp_14_64[lons,lats,],3, mean)
+```
+
+Surface Downwelling Clearsky Shortwave Radiation (RSDSCS)
+```{r}
+###  Import Clearsky Shortwave Radiation Data ####
+## Historical ##
+ncar_rsdscs_50_99 <- "NCAR_rsdscs__historical_1950_1999"
+ncar_rsdscs_hist_1950_1999_x <- paste(ncpath, ncar_rsdscs_50_99, ".nc", sep = "")
+ncar_rsdscs_00_14 <- "NCAR_rsdscs_historical_2000_2014" 
+ncar_rsdscs_hist_2000_2014_x <- paste(ncpath, ncar_rsdscs_00_14, ".nc", sep = "")
+
+## SSP Scenario ##
+ncar_rsdscs_01_64 <- "NCAR_rsdscs_ssp370_2015_2064"
+ncar_rsdscs_ssp_2015_2064_x <- paste(ncpath, ncar_rsdscs_01_64, ".nc", sep = "")
+
+# open up the nc files so r can work with them
+ncar_rsdscs_hist_1950_1999 <- nc_open(ncar_rsdscs_hist_1950_1999_x)
+ncar_rsdscs_hist_2000_2014 <- nc_open(ncar_rsdscs_hist_2000_2014_x)
+ncar_rsdscs_ssp_2015_2064 <- nc_open(ncar_rsdscs_ssp_2015_2064_x)
+
+# Isolate the variable we're concerned about, the shortwave radiation variable - "rsdscs"
+dname <- "rsdscs"
+
+# Time coordinate for 20th century part of run from 1950 - 1999
+ncar_rsdscs_50_99_time <- ncvar_get(ncar_rsdscs_hist_1950_1999,"time")
+ncar_rsdscs_50_99_tunits <- ncatt_get(ncar_rsdscs_hist_1950_1999,"time","units")
+origin="1/01/1950"
+enddate="12/01/1999"
+ncar_rsdscs_time_50_99 <- seq.dates(origin, enddate, by = "months") 
+  
+# Time coordinate for early 21st century part of run from 2000 - 2014
+ncar_rsdscs_00_14_time <- ncvar_get(ncar_rsdscs_hist_2000_2014,"time")
+ncar_rsdscs_00_14_tunits <- ncatt_get(ncar_rsdscs_hist_2000_2014,"time","units")
+origin="1/01/2000"
+enddate="12/01/2014"
+ncar_rsdscs_time_00_14 <- seq.dates(origin, enddate, by="months")
+
+# Time coordinate for later 21st century part of run from 2015 - 2064
+ncar_rsdscs_15_64_time <- ncvar_get(ncar_rsdscs_ssp_2015_2064,"time")
+ncar_rsdscs_15_64_tunits <- ncatt_get(ncar_rsdscs_ssp_2015_2064,"time","units")
+origin="1/01/2015"
+enddate="12/01/2064"
+ncar_rsdscs_time_15_64 <- seq.dates(origin, enddate, by="months")
+
+# Read in the lat and lon coordinates from ONLY ONE of the data files (they're slices of output from the same climate model, and therefore use the same spatial grid). 
+lon <- ncvar_get(ncar_rsdscs_hist_1950_1999,"lon")
+nlon <- dim(lon)
+lat <- ncvar_get(ncar_rsdscs_hist_1950_1999,"lat")
+nlat <- dim(lat)
+
+# Align w Ivanpah coordinates
+lats = which(lat >= 35 & lat <= 36)
+lons = which(lon >= 244 & lon <= 245)
+
+
+```
+
